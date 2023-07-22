@@ -25,3 +25,15 @@ Usage:
         the number of worker routines to spawn. Defaults to number of CPUs
 ```
 
+
+# dependencies 
+webp libraries
+```
+yum install libwebp -y
+yum install libwebp-tools -y
+```
+
+# compiling Unix executable in GoLand (Windows)
+```
+ env GOOS=linux go build -o gowebp
+```

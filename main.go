@@ -8,9 +8,11 @@ import (
 	"github.com/nickalie/go-webpbin"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -40,6 +42,9 @@ var (
 	appendToName     string
 	inputMinFileSize string
 	minFileSize      datasize.ByteSize
+	chown            string
+	chgrp            string
+	chmod            string
 )
 
 // set the flags
@@ -53,11 +58,13 @@ func init() {
 	flag.StringVar(&appendToName, "append", "", "append string to the end of file name")
 	flag.StringVar(&inputMinFileSize, "min-size", "10KB",
 		"smallest file size that will have a webp image created")
-	flag.BoolVar(&dryRun, "dry-run", false, "whether to handle this as a dry run and only " +
+	flag.BoolVar(&dryRun, "dry-run", false, "whether to handle this as a dry run and only "+
 		"print target files")
-	flag.IntVar(&workers, "w", runtime.NumCPU(), "the number of worker routines to spawn. " +
+	flag.IntVar(&workers, "w", runtime.NumCPU(), "the number of worker routines to spawn. "+
 		"Defaults to number of CPUs.")
-
+	flag.StringVar(&chown, "chown", "", "assign file ownership to generated files")
+	flag.StringVar(&chgrp, "chgrp", "", "assign group to generated files")
+	flag.StringVar(&chmod, "chmod", "", "assign permissions to generated files")
 	flag.Parse()
 
 	err := minFileSize.UnmarshalText([]byte(inputMinFileSize))
@@ -157,7 +164,7 @@ func (p *pool) execute(j *job) {
 	path := filepath.Dir(j.input)
 
 	// output is the old filepath with new webp extension and prepend and append strings
-	r.outputFile = filepath.Join(path, prependToName + base[:len(base)-len(targetExt)] + appendToName + ".webp")
+	r.outputFile = filepath.Join(path, prependToName+base[:len(base)-len(targetExt)]+appendToName+".webp")
 
 	// check if file already exists
 	if !replace {
@@ -191,8 +198,50 @@ func (p *pool) execute(j *job) {
 		OutputFile(r.outputFile).
 		Run()
 
+	// Account for unknown errors
 	if r.err != nil {
+		log.Printf("Something happened: %s\n", r.err)
 		return
+	} else {
+		// Perform chown
+		if len(chown) > 0 {
+			usr, err := user.Lookup(chown)
+			if err != nil {
+				log.Printf("Could not find user: %s\n", err)
+			} else {
+				uid, _ := strconv.Atoi(usr.Uid)
+				err = os.Chown(r.outputFile, uid, -1)
+				if err != nil {
+					log.Printf("Could not change owner: %s\n", err)
+				}
+			}
+		}
+
+		// Perform chgrp
+		if len(chgrp) > 0 {
+			grp, err := user.LookupGroup(chgrp)
+			if err != nil {
+				log.Printf("Could not find group: %s\n", err)
+			} else {
+				gid, _ := strconv.Atoi(grp.Gid)
+				err = os.Chown(r.outputFile, -1, gid)
+				if err != nil {
+					log.Printf("Could not change owner and group: %s\n", err)
+				}
+			}
+		}
+
+		// Perform chmod
+		if len(chmod) > 0 {
+			mode, err := strconv.ParseUint(chmod, 8, 32)
+			if err != nil {
+				log.Fatalf("invalid chmod value: %v", err)
+			}
+			err = os.Chmod(r.outputFile, os.FileMode(mode))
+			if err != nil {
+				log.Printf("Could not change permissions: %s\n", err)
+			}
+		}
 	}
 
 	// get the file size of the new file
