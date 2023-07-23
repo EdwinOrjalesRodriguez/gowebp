@@ -202,46 +202,6 @@ func (p *pool) execute(j *job) {
 	if r.err != nil {
 		log.Printf("Something happened: %s\n", r.err)
 		return
-	} else {
-		// Perform chown
-		if len(chown) > 0 {
-			usr, err := user.Lookup(chown)
-			if err != nil {
-				log.Printf("Could not find user: %s\n", err)
-			} else {
-				uid, _ := strconv.Atoi(usr.Uid)
-				err = os.Chown(r.outputFile, uid, -1)
-				if err != nil {
-					log.Printf("Could not change owner: %s\n", err)
-				}
-			}
-		}
-
-		// Perform chgrp
-		if len(chgrp) > 0 {
-			grp, err := user.LookupGroup(chgrp)
-			if err != nil {
-				log.Printf("Could not find group: %s\n", err)
-			} else {
-				gid, _ := strconv.Atoi(grp.Gid)
-				err = os.Chown(r.outputFile, -1, gid)
-				if err != nil {
-					log.Printf("Could not change owner and group: %s\n", err)
-				}
-			}
-		}
-
-		// Perform chmod
-		if len(chmod) > 0 {
-			mode, err := strconv.ParseUint(chmod, 8, 32)
-			if err != nil {
-				log.Fatalf("invalid chmod value: %v", err)
-			}
-			err = os.Chmod(r.outputFile, os.FileMode(mode))
-			if err != nil {
-				log.Printf("Could not change permissions: %s\n", err)
-			}
-		}
 	}
 
 	// get the file size of the new file
@@ -262,6 +222,46 @@ func (p *pool) execute(j *job) {
 				return
 			}
 
+		} else {
+			// Perform chown
+			if len(chown) > 0 {
+				usr, err := user.Lookup(chown)
+				if err != nil {
+					log.Printf("Could not find user: %s\n", err)
+				} else {
+					uid, _ := strconv.Atoi(usr.Uid)
+					err = os.Chown(r.outputFile, uid, -1)
+					if err != nil {
+						log.Printf("Could not change owner: %s\n", err)
+					}
+				}
+			}
+
+			// Perform chgrp
+			if len(chgrp) > 0 {
+				grp, err := user.LookupGroup(chgrp)
+				if err != nil {
+					log.Printf("Could not find group: %s\n", err)
+				} else {
+					gid, _ := strconv.Atoi(grp.Gid)
+					err = os.Chown(r.outputFile, -1, gid)
+					if err != nil {
+						log.Printf("Could not change owner and group: %s\n", err)
+					}
+				}
+			}
+
+			// Perform chmod
+			if len(chmod) > 0 {
+				mode, err := strconv.ParseUint(chmod, 8, 32)
+				if err != nil {
+					log.Fatalf("invalid chmod value: %v", err)
+				}
+				err = os.Chmod(r.outputFile, os.FileMode(mode))
+				if err != nil {
+					log.Printf("Could not change permissions: %s\n", err)
+				}
+			}
 		}
 		log.Printf("%s (%s) \u2192 %s (%s) [%.2f%%]\n",
 			j.input, fSizeTarget.HumanReadable(), r.outputFile, fSizeOutput.HumanReadable(), r.compression)
