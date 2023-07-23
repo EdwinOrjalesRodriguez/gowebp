@@ -20,9 +20,16 @@ Usage:
         prepend string to the beginning of file name
   -q uint
         the quality for the webp images
-  -r    replace existing webp files
+  -r
+  		replace existing webp files
   -w int
         the number of worker routines to spawn. Defaults to number of CPUs
+  -chown string
+  		assign unix owner to created webp files
+  -chgrp string
+  		assign unix group to created webp files
+  -chmod string/int
+  		assign unix permissions to created webp files (string or int will both work)
 ```
 
 
